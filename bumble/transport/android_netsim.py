@@ -186,11 +186,20 @@ async def open_android_netsim_controller_transport(server_host, server_port):
 
         def send_packet(self, data):
             async def send():
-                await self.context.write(
-                    PacketResponse(
-                        hci_packet=HCIPacket(packet_type=data[0], packet=data[1:])
-                    )
-                )
+                while True:
+                    try:
+                        await self.context.write(
+                            PacketResponse(
+                                hci_packet=HCIPacket(packet_type=data[0], packet=data[1:])
+                            )
+                        )
+                        break
+                    except Exception as ex:
+                        if ex.args[0] == 'Failed grpc_call_start_batch: 8':
+                            logger.exception(ex)
+                            await asyncio.sleep(0.01)
+                            continue
+                        raise
 
             self.loop.create_task(send())
 
